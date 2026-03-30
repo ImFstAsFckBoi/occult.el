@@ -6,6 +6,8 @@
 Occult - from Latin /occultus/ - "hidden, secret"
 #+end_quote
 
+[[file:./test/screenshot.png]]
+
 * What
 
 It lets you collapse any buffer region into a single-line summary using overlays. The hidden text remains fully present in the buffer - accessible to ~buffer-string~, org-export, copy/kill, and LLM context extraction.
