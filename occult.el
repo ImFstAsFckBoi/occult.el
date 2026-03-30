@@ -296,9 +296,6 @@ Behavior depends on `occult-auto-reveal'."
       (advice-add fn :after #'occult--evil-search-reveal))
     (setq occult--evil-advised t)))
 
-(with-eval-after-load 'evil
-  (occult--setup-evil))
-
 ;;; Internal minor mode
 
 (define-minor-mode occult--mode
@@ -321,7 +318,10 @@ are created and deactivates when the last fold is removed."
 (defun occult--ensure-mode ()
   "Activate the internal mode if not already active."
   (unless occult--mode
-    (occult--mode 1)))
+    (occult--mode 1))
+  (when (and (not occult--evil-advised)
+             (featurep 'evil))
+    (occult--setup-evil)))
 
 (defun occult--maybe-disable-mode ()
   "Deactivate the internal mode if no folds remain in the buffer."
