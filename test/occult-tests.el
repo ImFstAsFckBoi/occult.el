@@ -589,6 +589,65 @@ The edit buffer and base buffer are cleaned up at the end."
             (expect (buffer-live-p edit) :not :to-be-truthy))
         (when (buffer-live-p base) (kill-buffer base))))))
 
+(describe "occult-edit session window cleanup"
+  (it "commit deletes the window opened by the edit session"
+    (let ((base (generate-new-buffer "*occult-win-commit*")))
+      (unwind-protect
+          (save-window-excursion
+            (delete-other-windows)
+            (switch-to-buffer base)
+            (with-current-buffer base
+              (insert "Line 1\nLine 2\nLine 3\n")
+              (goto-char (point-min))
+              (occult-hide-region 1 15)
+              (goto-char 3))
+            (let* ((edit (occult-edit-region))
+                   (during (length (window-list))))
+              (with-current-buffer edit (occult-edit-commit))
+              (expect during :to-equal 2)
+              (expect (length (window-list)) :to-equal 1)))
+        (when (buffer-live-p base) (kill-buffer base)))))
+
+  (it "abort deletes the window opened by the edit session"
+    (let ((base (generate-new-buffer "*occult-win-abort*")))
+      (unwind-protect
+          (save-window-excursion
+            (delete-other-windows)
+            (switch-to-buffer base)
+            (with-current-buffer base
+              (insert "Line 1\nLine 2\nLine 3\n")
+              (goto-char (point-min))
+              (occult-hide-region 1 15)
+              (goto-char 3))
+            (let* ((edit (occult-edit-region))
+                   (during (length (window-list))))
+              (with-current-buffer edit
+                (cl-letf (((symbol-function 'yes-or-no-p) (lambda (_) t)))
+                  (occult-edit-abort)))
+              (expect during :to-equal 2)
+              (expect (length (window-list)) :to-equal 1)))
+        (when (buffer-live-p base) (kill-buffer base)))))
+
+  (it "does not error when edit buffer shares window with base"
+    (let ((base (generate-new-buffer "*occult-win-same*")))
+      (unwind-protect
+          (save-window-excursion
+            (delete-other-windows)
+            (switch-to-buffer base)
+            (with-current-buffer base
+              (insert "Line 1\nLine 2\nLine 3\n")
+              (goto-char (point-min))
+              (occult-hide-region 1 15)
+              (goto-char 3))
+            (let* ((display-buffer-alist
+                    '((".*" display-buffer-same-window)))
+                   (edit (occult-edit-region)))
+              (with-current-buffer edit (occult-edit-commit))
+              (expect (length (window-list)) :to-equal 1)
+              ;; base buffer should be visible again in the sole window
+              (expect (window-buffer) :to-equal base)))
+        (when (buffer-live-p base) (kill-buffer base))))))
+
 (provide 'occult-tests)
 
 ;; Local Variables:

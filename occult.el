@@ -539,6 +539,18 @@ mode with a close binding and no commit/abort semantics."
     (pop-to-buffer buf)
     buf))
 
+(defun occult-edit--close-session ()
+  "Kill the edit buffer and remove the window that was showing it.
+Also removes the buffer from any other window that was displaying
+it, deleting deletable windows and restoring the previous buffer
+in dedicated or sole windows."
+  (let ((buf (current-buffer)))
+    (set-buffer-modified-p nil)
+    (dolist (win (get-buffer-window-list buf nil t))
+      (quit-window nil win))
+    (when (buffer-live-p buf)
+      (kill-buffer buf))))
+
 (defun occult-edit-commit ()
   "Commit the current edit session and close the indirect buffer.
 Changes already live in the base buffer because text is shared.
@@ -546,10 +558,8 @@ In a read-only view session this simply closes the view buffer."
   (interactive)
   (unless occult-edit-mode
     (user-error "Not in an occult edit session"))
-  (let ((buf (current-buffer))
-        (view-p occult-edit--read-only-p))
-    (set-buffer-modified-p nil)
-    (kill-buffer buf)
+  (let ((view-p occult-edit--read-only-p))
+    (occult-edit--close-session)
     (message (if view-p "Occult view closed" "Occult edit committed"))))
 
 (defun occult-edit-abort ()
@@ -561,11 +571,10 @@ without touching the base buffer."
   (unless occult-edit-mode
     (user-error "Not in an occult edit session"))
   (let ((view-p occult-edit--read-only-p)
-        (buf (current-buffer))
         (original occult-edit--original-text))
     (if view-p
         (progn
-          (kill-buffer buf)
+          (occult-edit--close-session)
           (message "Occult view closed"))
       (when (and (buffer-modified-p)
                  (not (yes-or-no-p "Abort edit and discard changes? ")))
@@ -577,8 +586,7 @@ without touching the base buffer."
               (with-current-buffer src (insert original))
               (replace-buffer-contents src))
           (kill-buffer src)))
-      (set-buffer-modified-p nil)
-      (kill-buffer buf)
+      (occult-edit--close-session)
       (message "Occult edit aborted"))))
 
 (provide 'occult)
